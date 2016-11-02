@@ -58,6 +58,7 @@ struct RouteParameters : public BaseParameters
     enum class GeometriesType
     {
         Polyline,
+        Polyline6,
         GeoJSON
     };
     enum class OverviewType

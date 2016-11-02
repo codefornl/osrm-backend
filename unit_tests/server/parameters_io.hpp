@@ -22,6 +22,9 @@ inline std::ostream &operator<<(std::ostream &out, api::RouteParameters::Geometr
     case api::RouteParameters::GeometriesType::Polyline:
         out << "Polyline";
         break;
+    case api::RouteParameters::GeometriesType::Polyline6:
+        out << "Polyline6";
+        break;
     default:
         BOOST_ASSERT_MSG(false, "GeometriesType not fully captured");
     }
