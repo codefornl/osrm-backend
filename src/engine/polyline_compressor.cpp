@@ -57,9 +57,9 @@ std::string encode(std::vector<int> &numbers)
 }
 } // anonymous ns
 
-std::string encodePolyline(CoordVectorForwardIter begin, CoordVectorForwardIter end, double poylinePrecision)
+std::string encodePolyline(CoordVectorForwardIter begin, CoordVectorForwardIter end, double polylinePrecision)
 {
-    double coordinate_to_polyline = poylinePrecision / COORDINATE_PRECISION;
+    double coordinate_to_polyline = polylinePrecision / COORDINATE_PRECISION;
     auto size = std::distance(begin, end);
     if (size == 0)
     {
@@ -85,9 +85,9 @@ std::string encodePolyline(CoordVectorForwardIter begin, CoordVectorForwardIter 
     return encode(delta_numbers);
 }
 
-std::vector<util::Coordinate> decodePolyline(const std::string &geometry_string, double poylinePrecision)
+std::vector<util::Coordinate> decodePolyline(const std::string &geometry_string, double polylinePrecision)
 {
-    double polyline_to_coordinate = COORDINATE_PRECISION / poylinePrecision;
+    double polyline_to_coordinate = COORDINATE_PRECISION / polylinePrecision;
     std::vector<util::Coordinate> new_coordinates;
     int index = 0, len = geometry_string.size();
     int lat = 0, lng = 0;
