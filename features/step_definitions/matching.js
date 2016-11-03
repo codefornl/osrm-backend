@@ -117,7 +117,6 @@ module.exports = function () {
 
                     if (headers.has('geometry')) {
                         if (this.queryParams['geometries'] === 'polyline') {
-                            console.log(polyline.decode(geometry).toString());
                             got.geometry = polyline.decode(geometry).toString();
                         }
                         else if (this.queryParams['geometries'] === 'polyline6') {
