@@ -57,9 +57,9 @@ std::string encode(std::vector<int> &numbers)
 }
 } // anonymous ns
 
-std::string encodePolyline(CoordVectorForwardIter begin, CoordVectorForwardIter end, double polylinePrecision)
+std::string encodePolyline(CoordVectorForwardIter begin, CoordVectorForwardIter end)
 {
-    double coordinate_to_polyline = polylinePrecision / COORDINATE_PRECISION;
+    double coordinate_to_polyline = POLYLINE_PRECISION / COORDINATE_PRECISION;
     auto size = std::distance(begin, end);
     if (size == 0)
     {
