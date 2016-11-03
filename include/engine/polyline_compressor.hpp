@@ -20,7 +20,7 @@ constexpr double POLYLINE_TO_COORDINATE = COORDINATE_PRECISION / POLYLINE_PRECIS
 using CoordVectorForwardIter = std::vector<util::Coordinate>::const_iterator;
 // Encodes geometry into polyline format.
 // See: https://developers.google.com/maps/documentation/utilities/polylinealgorithm
-template <unsigned POLYLINE_PRECISION=10000>
+template <unsigned POLYLINE_PRECISION>
 std::string encodePolyline(CoordVectorForwardIter begin, CoordVectorForwardIter end);
 
 // Decodes geometry from polyline format

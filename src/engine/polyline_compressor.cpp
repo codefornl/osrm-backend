@@ -57,6 +57,7 @@ std::string encode(std::vector<int> &numbers)
 }
 } // anonymous ns
 
+template <unsigned POLYLINE_PRECISION=10000>
 std::string encodePolyline(CoordVectorForwardIter begin, CoordVectorForwardIter end)
 {
     double coordinate_to_polyline = POLYLINE_PRECISION / COORDINATE_PRECISION;

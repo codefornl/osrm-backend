@@ -42,10 +42,10 @@ std::string modeToString(const extractor::TravelMode mode);
 
 } // namespace detail
 
-template <typename ForwardIter, unsigned PRECISION=10000>
+template <unsigned POLYLINE_PRECISION=10000, typename ForwardIter>
 util::json::String makePolyline(ForwardIter begin, ForwardIter end)
 {
-    return {encodePolyline<PRECISION>(begin, end)};
+    return {encodePolyline<POLYLINE_PRECISION>(begin, end)};
 }
 
 template <typename ForwardIter>
