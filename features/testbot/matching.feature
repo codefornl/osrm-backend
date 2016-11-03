@@ -197,11 +197,48 @@ Feature: Basic Map Matching
             | trace | matchings | geometry                                   |
             | abd   | abd       | 1,1,1.000089,1,1.000089,1,1.000089,0.99991 |
 
+    Scenario: Testbot - Geometry details in polyline
+        Given the query options
+            | overview   | full      |
+            | geometries | polyline  |
+
+        Given the node map
+            """
+            a b c
+              d
+            """
+
+        And the ways
+            | nodes | oneway |
+            | abc   | no     |
+            | bd    | no     |
+
+        When I match I should get
+            | trace | matchings | geometry                                |
+            | abd   | abd       | 1,1,1,1.00009,1,1.00009,0.99991,1.00009 |
+
+    Scenario: Testbot - Geometry details in polyline6
+        Given the query options
+            | overview   | full       |
+            | geometries | polyline6  |
+
+        Given the node map
+            """
+            a b c
+              d
+            """
+
+        And the ways
+            | nodes | oneway |
+            | abc   | no     |
+            | bd    | no     |
+
+        When I match I should get
+            | trace | matchings | geometry                                |
+            | abd   | abd       | 1,1,1,1.00009,1,1.00009,0.99991,1.00009 |
+
     Scenario: Testbot - Speed greater than speed threshhold, should split -- returns trace as abcd but should be split into ab,cd
         Given a grid size of 10 meters
-        Given the query options
-            | geometries | geojson  |
-
         Given the node map
             """
             a b ---- x
@@ -220,9 +257,6 @@ Feature: Basic Map Matching
 
     Scenario: Testbot - Speed less than speed threshhold, should not split
         Given a grid size of 10 meters
-        Given the query options
-            | geometries | geojson  |
-
         Given the node map
             """
             a b c d
