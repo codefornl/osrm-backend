@@ -26,7 +26,7 @@ using CoordVectorForwardIter = std::vector<util::Coordinate>::const_iterator;
 template <unsigned POLYLINE_PRECISION=10000>
 std::string encodePolyline(CoordVectorForwardIter begin, CoordVectorForwardIter end)
 {
-    double coordinate_to_polyline = POLYLINE_PRECISION / COORDINATE_PRECISION;
+    double coordinate_to_polyline = (double) POLYLINE_PRECISION / (double) COORDINATE_PRECISION;
     auto size = std::distance(begin, end);
     if (size == 0)
     {
