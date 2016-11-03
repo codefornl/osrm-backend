@@ -32,7 +32,7 @@ const constexpr double LOOKAHEAD_DISTANCE_WITHOUT_LANES = 10.0;
 // smaller widths, ranging from 2.5 to 3.25 meters. As a compromise, we use
 // the 3.25 here for our angle calculations
 const constexpr double ASSUMED_LANE_WIDTH = 3.25;
-const constexpr double FAR_LOOKAHEAD_DISTANCE = 30.0;
+const constexpr double FAR_LOOKAHEAD_DISTANCE = 20.0;
 
 // The count of lanes assumed when no lanes are present. Since most roads will have lanes for both
 // directions or a lane count specified, we use 2. Overestimating only makes our calculations safer,
@@ -72,13 +72,7 @@ CoordinateExtractor::GetCoordinateAlongRoad(const NodeID intersection_node,
 
     // fallback, mostly necessary for dead ends
     if (intersection_node == to_node)
-        return TrimCoordinatesToLength(coordinates, 5).back();
-
-    const auto lookahead_distance =
-        FAR_LOOKAHEAD_DISTANCE + considered_lanes * ASSUMED_LANE_WIDTH * 0.5;
-
-    // reduce coordinates to the ones we care about
-    coordinates = TrimCoordinatesToLength(std::move(coordinates), lookahead_distance);
+        return TrimCoordinatesToLength(std::move(coordinates), 5).back();
 
     // If this reduction leaves us with only two coordinates, the turns/angles are represented in a
     // valid way. Only curved roads and other difficult scenarios will require multiple coordinates.
@@ -104,6 +98,29 @@ CoordinateExtractor::GetCoordinateAlongRoad(const NodeID intersection_node,
             return coordinates.back();
     }
 
+    const auto first_distance =
+        util::coordinate_calculation::haversineDistance(coordinates[0], coordinates[1]);
+
+    /* if the very first coordinate along the road is reasonably far away from the road, we assume
+     * the coordinate to correctly represent the turn. This could probably be improved using
+     * information on the very first turn angle (requires knowledge about previous road) and the
+     * respective lane widths.
+     */
+    const bool first_coordinate_is_far_away = [&first_distance, considered_lanes]() {
+        const auto required_distance =
+            considered_lanes * 0.5 * ASSUMED_LANE_WIDTH + LOOKAHEAD_DISTANCE_WITHOUT_LANES;
+        return first_distance > required_distance;
+    }();
+
+    if (first_coordinate_is_far_away)
+    {
+        return coordinates[1];
+    }
+
+    // now, after the simple checks have succeeded make our further computations simpler
+    const auto lookahead_distance =
+        FAR_LOOKAHEAD_DISTANCE + considered_lanes * ASSUMED_LANE_WIDTH * 0.5;
+
     /*
      * The coordinates along the road are in different distances from the source. If only very few
      * coordinates are close to the intersection, It might just be we simply looked to far down the
@@ -120,39 +137,18 @@ CoordinateExtractor::GetCoordinateAlongRoad(const NodeID intersection_node,
      * of the actual roads. If a road splits in two, the ways for the separate direction can be
      * modeled very far apart with a steep angle at the split, even though the roads actually don't
      * take a turn. The distance between the coordinates can be an indicator for these small changes
+     *
+     * Luckily, these segment distances are a byproduct of trimming
      */
-    const auto segment_distances = [&coordinates]() {
-        std::vector<double> segment_distances;
-        segment_distances.reserve(coordinates.size());
-        // sentinel
-        auto last_coordinate = coordinates.front();
-        boost::range::transform(coordinates,
-                                std::back_inserter(segment_distances),
-                                [&last_coordinate](const util::Coordinate current_coordinate) {
-                                    const auto distance =
-                                        util::coordinate_calculation::haversineDistance(
-                                            last_coordinate, current_coordinate);
-                                    last_coordinate = current_coordinate;
-                                    return distance;
-                                });
-        return segment_distances;
-    }();
+    // reduce coordinates to the ones we care about
+    std::vector<double> segment_distances = PrepareLengthCache(coordinates, lookahead_distance);
+    coordinates =
+        TrimCoordinatesToLength(std::move(coordinates), lookahead_distance, segment_distances);
+    segment_distances.back() = std::min(segment_distances.back(), lookahead_distance);
 
-    /* if the very first coordinate along the road is reasonably far away from the road, we assume
-     * the coordinate to correctly represent the turn. This could probably be improved using
-     * information on the very first turn angle (requires knowledge about previous road) and the
-     * respective lane widths.
-     */
-    const bool first_coordinate_is_far_away = [&segment_distances, considered_lanes]() {
-        const auto required_distance =
-            considered_lanes * 0.5 * ASSUMED_LANE_WIDTH + LOOKAHEAD_DISTANCE_WITHOUT_LANES;
-        return segment_distances[1] > required_distance;
-    }();
-
-    if (first_coordinate_is_far_away)
-    {
-        return coordinates[1];
-    }
+    // if we are now left with two, well than we don't have to worry
+    if (coordinates.size() == 2)
+        return coordinates.back();
 
     const double max_deviation_from_straight = GetMaxDeviation(
         coordinates.begin(), coordinates.end(), coordinates.front(), coordinates.back());
@@ -171,7 +167,7 @@ CoordinateExtractor::GetCoordinateAlongRoad(const NodeID intersection_node,
      * http://www.openstreetmap.org/search?query=52.514503%2013.32252#map=19/52.51450/13.32252
      */
     const auto straight_distance_and_index = [&]() {
-        auto straight_distance = segment_distances[1];
+        auto straight_distance = first_distance;
 
         std::size_t index;
         for (index = 2; index < coordinates.size(); ++index)
@@ -197,7 +193,7 @@ CoordinateExtractor::GetCoordinateAlongRoad(const NodeID intersection_node,
     if (starts_of_without_turn)
     {
         // skip over repeated coordinates
-        return TrimCoordinatesToLength(std::move(coordinates), 5).back();
+        return TrimCoordinatesToLength(std::move(coordinates), 5, segment_distances).back();
     }
 
     // compute the regression vector based on the sum of least squares
@@ -263,9 +259,9 @@ CoordinateExtractor::GetCoordinateAlongRoad(const NodeID intersection_node,
          * destination lanes and the ones that performa a larger turn.
          */
         const double offset = 0.5 * considered_lanes * ASSUMED_LANE_WIDTH;
-        coordinates = TrimCoordinatesToLength(std::move(coordinates), offset);
+        coordinates = TrimCoordinatesToLength(std::move(coordinates), offset, segment_distances);
         const auto vector_head = coordinates.back();
-        coordinates = TrimCoordinatesToLength(std::move(coordinates), offset);
+        coordinates = TrimCoordinatesToLength(std::move(coordinates), offset, segment_distances);
         BOOST_ASSERT(coordinates.size() >= 2);
         return GetCorrectedCoordinate(turn_coordinate, coordinates.back(), vector_head);
     }
@@ -296,7 +292,9 @@ CoordinateExtractor::GetCoordinateAlongRoad(const NodeID intersection_node,
 
     // We use the locations on the regression line to offset the regression line onto the
     // intersection.
-    return TrimCoordinatesToLength(coordinates, LOOKAHEAD_DISTANCE_WITHOUT_LANES).back();
+    return TrimCoordinatesToLength(
+               std::move(coordinates), LOOKAHEAD_DISTANCE_WITHOUT_LANES, segment_distances)
+        .back();
 }
 
 std::vector<util::Coordinate>
@@ -599,20 +597,58 @@ bool CoordinateExtractor::IsDirectOffset(const std::vector<util::Coordinate> &co
                                                       coordinates.back());
 }
 
+std::vector<double>
+CoordinateExtractor::PrepareLengthCache(const std::vector<util::Coordinate> &coordinates,
+                                        const double limit) const
+{
+    std::vector<double> segment_distances;
+    segment_distances.reserve(coordinates.size());
+    segment_distances.push_back(0);
+    // sentinel
+    auto last_coordinate = coordinates.front();
+    std::find_if(
+        std::next(std::begin(coordinates)),
+        std::end(coordinates),
+        [&last_coordinate, limit, &segment_distances](const util::Coordinate current_coordinate) {
+            const auto distance = util::coordinate_calculation::haversineDistance(
+                last_coordinate, current_coordinate);
+            last_coordinate = current_coordinate;
+            segment_distances.push_back(distance);
+            return distance >= limit;
+        });
+    return segment_distances;
+}
+
 std::vector<util::Coordinate>
 CoordinateExtractor::TrimCoordinatesToLength(std::vector<util::Coordinate> coordinates,
-                                             const double desired_length) const
+                                             const double desired_length,
+                                             const std::vector<double> &length_cache) const
 {
     BOOST_ASSERT(coordinates.size() >= 2);
-    double distance_to_current_coordinate = 0;
 
-    for (std::size_t coordinate_index = 1; coordinate_index < coordinates.size();
-         ++coordinate_index)
+    double distance_to_current_coordinate = 0;
+    std::size_t coordinate_index = 0;
+
+    const auto compute_length =
+        [&coordinate_index, &distance_to_current_coordinate, &coordinates]() {
+            const auto new_distance =
+                distance_to_current_coordinate +
+                util::coordinate_calculation::haversineDistance(coordinates[coordinate_index - 1],
+                                                                coordinates[coordinate_index]);
+            return new_distance;
+        };
+
+    const auto read_length_from_cache = [&length_cache, &coordinate_index]() {
+        return length_cache[coordinate_index];
+    };
+
+    bool use_cache = !length_cache.empty();
+    BOOST_ASSERT(!use_cache || length_cache.back() >= desired_length);
+    for (coordinate_index = 1; coordinate_index < coordinates.size(); ++coordinate_index)
     {
+        // get the length to the next candidate, given that we can or cannot have a length cache
         const auto distance_to_next_coordinate =
-            distance_to_current_coordinate +
-            util::coordinate_calculation::haversineDistance(coordinates[coordinate_index - 1],
-                                                            coordinates[coordinate_index]);
+            use_cache ? read_length_from_cache() : compute_length();
 
         // if we reached the number of coordinates, we can stop here
         if (distance_to_next_coordinate >= desired_length)
