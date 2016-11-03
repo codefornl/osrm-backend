@@ -234,10 +234,10 @@ Feature: Basic Map Matching
             | bd    | no     |
 
         When I match I should get
-            | trace | matchings | geometry                                |
-            | abd   | abd       | 1,1,1,1.00009,1,1.00009,0.99991,1.00009 |
+            | trace | matchings | geometry                                   |
+            | abd   | abd       | 1,1,1,1.000089,1,1.000089,0.99991,1.000089 |
 
-    Scenario: Testbot - Speed greater than speed threshhold, should split -- returns trace as abcd but should be split into ab,cd
+    Scenario: Testbot - Speed greater than speed threshhold
         Given a grid size of 10 meters
         Given the node map
             """
@@ -255,7 +255,7 @@ Feature: Basic Map Matching
             | trace | timestamps | matchings |
             | abcd  | 0 1 2 3    | ab,cd     |
 
-    Scenario: Testbot - Speed less than speed threshhold, should not split
+    Scenario: Testbot - Speed less than speed threshhold
         Given a grid size of 10 meters
         Given the node map
             """

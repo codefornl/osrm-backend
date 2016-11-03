@@ -121,8 +121,7 @@ module.exports = function () {
                             got.geometry = polyline.decode(geometry).toString();
                         }
                         else if (this.queryParams['geometries'] === 'polyline6') {
-                            console.log(polyline.decode(geometry).toString());
-                            got.geometry = polyline.decode(geometry).toString();
+                            got.geometry = polyline.decode(geometry, 6).toString();
                         } else {
                             got.geometry = geometry.coordinates;
                         }
