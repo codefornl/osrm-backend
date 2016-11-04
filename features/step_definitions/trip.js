@@ -29,7 +29,7 @@ module.exports = function () {
                         }
                     }
 
-                    var json, geometry = '';
+                    var json;
                     if (res.body.length) {
                         json = JSON.parse(res.body);
                     }
