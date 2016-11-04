@@ -643,34 +643,57 @@ CoordinateExtractor::TrimCoordinatesToLength(std::vector<util::Coordinate> coord
     };
 
     bool use_cache = !length_cache.empty();
-    BOOST_ASSERT(!use_cache || length_cache.back() >= desired_length);
-    for (coordinate_index = 1; coordinate_index < coordinates.size(); ++coordinate_index)
+
+    if (use_cache && length_cache.back() < desired_length && coordinates.size() >= 2)
     {
-        // get the length to the next candidate, given that we can or cannot have a length cache
-        const auto distance_to_next_coordinate =
-            use_cache ? read_length_from_cache() : compute_length();
+        if (coordinates.size() == length_cache.size())
+            return coordinates;
 
-        // if we reached the number of coordinates, we can stop here
-        if (distance_to_next_coordinate >= desired_length)
+        else
         {
-            coordinates.resize(coordinate_index + 1);
+            const auto distance_between_last_coordinates =
+                util::coordinate_calculation::haversineDistance(*(coordinates.end() - 2),
+                                                                *(coordinates.end() - 1));
+            const auto interpolation_factor = ComputeInterpolationFactor(
+                desired_length - length_cache.back(), 0, distance_between_last_coordinates);
+
             coordinates.back() = util::coordinate_calculation::interpolateLinear(
-                ComputeInterpolationFactor(
-                    desired_length, distance_to_current_coordinate, distance_to_next_coordinate),
-                coordinates[coordinate_index - 1],
-                coordinates[coordinate_index]);
-            break;
+                interpolation_factor, *(coordinates.end() - 2), coordinates.back());
+            return coordinates;
         }
-
-        // remember the accumulated distance
-        distance_to_current_coordinate = distance_to_next_coordinate;
     }
-    if (coordinates.size() > 2 &&
-        util::coordinate_calculation::haversineDistance(coordinates[0], coordinates[1]) <= 1)
-        coordinates.erase(coordinates.begin() + 1);
+    else
+    {
+        BOOST_ASSERT(!use_cache || length_cache.back() >= desired_length);
+        for (coordinate_index = 1; coordinate_index < coordinates.size(); ++coordinate_index)
+        {
+            // get the length to the next candidate, given that we can or cannot have a length cache
+            const auto distance_to_next_coordinate =
+                use_cache ? read_length_from_cache() : compute_length();
 
-    BOOST_ASSERT(coordinates.size());
-    return coordinates;
+            // if we reached the number of coordinates, we can stop here
+            if (distance_to_next_coordinate >= desired_length)
+            {
+                coordinates.resize(coordinate_index + 1);
+                coordinates.back() = util::coordinate_calculation::interpolateLinear(
+                    ComputeInterpolationFactor(desired_length,
+                                               distance_to_current_coordinate,
+                                               distance_to_next_coordinate),
+                    coordinates[coordinate_index - 1],
+                    coordinates[coordinate_index]);
+                break;
+            }
+
+            // remember the accumulated distance
+            distance_to_current_coordinate = distance_to_next_coordinate;
+        }
+        if (coordinates.size() > 2 &&
+            util::coordinate_calculation::haversineDistance(coordinates[0], coordinates[1]) <= 1)
+            coordinates.erase(coordinates.begin() + 1);
+
+        BOOST_ASSERT(coordinates.size());
+        return coordinates;
+    }
 }
 
 util::Coordinate
@@ -795,6 +818,8 @@ double CoordinateExtractor::ComputeInterpolationFactor(const double desired_dist
     BOOST_ASSERT(distance_to_first < desired_distance);
     double segment_length = distance_to_second - distance_to_first;
     BOOST_ASSERT(segment_length > 0);
+    std::cout << "Values: " << desired_distance << " " << distance_to_first << " "
+              << distance_to_second << std::endl;
     BOOST_ASSERT(distance_to_second >= desired_distance);
     double missing_distance = desired_distance - distance_to_first;
     return std::max(0., std::min(missing_distance / segment_length, 1.0));
