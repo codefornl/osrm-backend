@@ -818,8 +818,6 @@ double CoordinateExtractor::ComputeInterpolationFactor(const double desired_dist
     BOOST_ASSERT(distance_to_first < desired_distance);
     double segment_length = distance_to_second - distance_to_first;
     BOOST_ASSERT(segment_length > 0);
-    std::cout << "Values: " << desired_distance << " " << distance_to_first << " "
-              << distance_to_second << std::endl;
     BOOST_ASSERT(distance_to_second >= desired_distance);
     double missing_distance = desired_distance - distance_to_first;
     return std::max(0., std::min(missing_distance / segment_length, 1.0));
