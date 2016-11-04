@@ -122,3 +122,69 @@ Feature: Basic trip planning
             | waypoints                                         | trips |
             | a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a |       |
 
+    Scenario: Testbot - Trip planning with polyline
+        Given the query options
+            | geometries | polyline  |
+
+        Given the node map
+            """
+            a b
+            c d
+            """
+
+        And the ways
+            | nodes |
+            | ab    |
+            | bc    |
+            | cb    |
+            | da    |
+
+        When I plan a trip I should get
+            | waypoints | trips  | geometry                                                               |
+            | a,b,c,d   | abcda  | 1,1,1,1.00009,0.99991,1,1,1.00009,1,1,0.99991,1.00009,1,1              |
+            | d,b,c,a   | dbcad  | 0.99991,1.00009,1,1,1,1.00009,0.99991,1,1,1.00009,1,1,0.99991,1.00009  |
+
+    Scenario: Testbot - Trip planning with polyline6
+        Given the query options
+            | geometries | polyline6  |
+
+        Given the node map
+            """
+            a b
+            c d
+            """
+
+        And the ways
+            | nodes |
+            | ab    |
+            | bc    |
+            | cb    |
+            | da    |
+
+        When I plan a trip I should get
+            | waypoints | trips  | geometry                                                                    |
+            | a,b,c,d   | abcda  | 1,1,1,1.000089,0.99991,1,1,1.000089,1,1,0.99991,1.000089,1,1                |
+            | d,b,c,a   | dbcad  | 0.99991,1.000089,1,1,1,1.000089,0.99991,1,1,1.000089,1,1,0.99991,1.000089   |
+
+    Scenario: Testbot - Trip planning with geojson
+        Given the query options
+            | geometries | geojson  |
+
+        Given the node map
+            """
+            a b
+            c d
+            """
+
+        And the ways
+            | nodes |
+            | ab    |
+            | bc    |
+            | cb    |
+            | da    |
+
+        When I plan a trip I should get
+            | waypoints | trips  | geometry                                                                   |
+            | a,b,c,d   | abcda  | 1,1,1.000089,1,1,0.99991,1.000089,1,1,1,1.000089,0.99991,1,1               |
+            | d,b,c,a   | dbcad  | 1.000089,0.99991,1,1,1.000089,1,1,0.99991,1.000089,1,1,1,1.000089,0.99991  |
+

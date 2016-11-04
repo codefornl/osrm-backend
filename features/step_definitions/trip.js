@@ -1,4 +1,5 @@
 var util = require('util');
+var polyline = require('polyline');
 
 module.exports = function () {
     function add(a, b) {
@@ -28,7 +29,7 @@ module.exports = function () {
                         }
                     }
 
-                    var json;
+                    var json, geometry = '';
                     if (res.body.length) {
                         json = JSON.parse(res.body);
                     }
@@ -39,6 +40,17 @@ module.exports = function () {
 
                     if (headers.has('message')) {
                         got.message = json.status_message;
+                    }
+
+                    if (headers.has('geometry')) {
+                        if (this.queryParams['geometries'] === 'polyline') {
+                            got.geometry = polyline.decode(json.trips[0].geometry).toString();
+                        }
+                        else if (this.queryParams['geometries'] === 'polyline6') {
+                            got.geometry = polyline.decode(json.trips[0].geometry, 6).toString();
+                        } else {
+                            got.geometry = json.trips[0].geometry.coordinates;
+                        }
                     }
 
                     if (headers.has('#')) {
